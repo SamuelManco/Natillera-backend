@@ -1,0 +1,9 @@
+target/
+.classpath
+.project
+.settings/
+.metadata/
+.postman/
+postman/
+*.log
+src/main/resources/application.properties

@@ -1,0 +1,16 @@
+spring.application.name=natillera
+
+# Conexion a MySQL - ajusta usuario/clave/nombre de base de datos
+spring.datasource.url=jdbc:mysql://localhost:3306/natillera_db?useSSL=false&serverTimezone=America/Bogota
+spring.datasource.username=root
+spring.datasource.password=TU_CLAVE_AQUI
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+# Hibernate genera/actualiza las tablas automaticamente a partir de las entidades
+# update: no borra datos existentes, solo ajusta el esquema
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.format_sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+
+server.port=8080
