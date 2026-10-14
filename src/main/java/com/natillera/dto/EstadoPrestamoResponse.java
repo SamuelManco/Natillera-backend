@@ -1,8 +1,10 @@
 package com.natillera.dto;
 
-import lombok.Data;
-import java.util.List;
 import com.natillera.model.Movimiento;
+import lombok.Data;
+
+import java.time.LocalDate;
+import java.util.List;
 
 @Data
 public class EstadoPrestamoResponse {
@@ -12,5 +14,6 @@ public class EstadoPrestamoResponse {
     private Long totalAbonadoCapital;
     private Long totalInteresPagado;
     private boolean pagadoCompleto;
-    private List<Movimiento> historial; // todos los abonos e intereses de este préstamo
+    private LocalDate fechaLimiteAbonos; // último día en que se aceptan abonos
+    private List<Movimiento> historial;  // todos los abonos e intereses de este préstamo
 }

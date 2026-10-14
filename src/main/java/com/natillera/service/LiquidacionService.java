@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -26,13 +27,14 @@ import java.util.stream.Collectors;
 @Service
 public class LiquidacionService {
 
-    // Nombres exactos que deben existir en Tbl_Tipo_Movimiento (créalos primero vía /api/tipo-movimiento)
+    // Nombres exactos que deben existir en Tbl_Tipo_Movimiento (el DataSeeder los crea)
     private static final String TIPO_APORTE = "Aporte";
+    private static final String TIPO_PREMIO_RIFA = "Premio Rifa";
     private static final String TIPO_INTERES_PRESTAMO = "Interés Préstamo";
     private static final String TIPO_INGRESO_RIFA = "Ingreso Rifa";
     private static final String TIPO_PAGO_LIQUIDACION = "Pago Liquidación";
 
-    // Nombres exactos que deben existir en Tbl_Estado (créalos primero vía /api/estado)
+    // Nombres exactos que deben existir en Tbl_Estado (el DataSeeder los crea)
     private static final String ESTADO_LIQUIDACION_CERRADA = "Cerrada";
     private static final String ESTADO_LIQUIDACIONXPERSONA_PENDIENTE = "Pendiente";
     private static final String ESTADO_LIQUIDACIONXPERSONA_PAGADA = "Pagada";
@@ -74,14 +76,27 @@ public class LiquidacionService {
     // dinero ya repartido en el primero.
     @Transactional
     public LiquidacionResumenResponse cerrarLiquidacion(Long idNatillera, CerrarLiquidacionRequest request) {
+        if (request.getFechaInicio() == null || request.getFechaFin() == null) {
+            throw new IllegalArgumentException("Faltan la fecha de inicio o la fecha de fin del periodo");
+        }
+        if (request.getFechaFin().isBefore(request.getFechaInicio())) {
+            throw new IllegalArgumentException("La fecha de fin no puede ser anterior a la de inicio");
+        }
+
         TipoMovimiento tipoAporte = tipoPorNombre(TIPO_APORTE);
+        TipoMovimiento tipoPremioRifa = tipoPorNombre(TIPO_PREMIO_RIFA);
         TipoMovimiento tipoInteresPrestamo = tipoPorNombre(TIPO_INTERES_PRESTAMO);
         TipoMovimiento tipoIngresoRifa = tipoPorNombre(TIPO_INGRESO_RIFA);
 
-        // 1. Ahorro de cada persona, SOLO dentro de este periodo
-        List<Movimiento> aportes = movimientoRepository.findByIdNatilleraAndIdTipoMovimientoAndFechaBetween(
-                idNatillera, tipoAporte.getId(), request.getFechaInicio(), request.getFechaFin());
-        Map<Long, Long> ahorroPorPersona = aportes.stream()
+        // 1. Ahorro de cada persona, SOLO dentro de este periodo.
+        //    El premio de una rifa se suma al ahorro de quien la ganó, igual que un aporte.
+        List<Movimiento> ahorros = new ArrayList<>(movimientoRepository.findByIdNatilleraAndIdTipoMovimientoAndFechaBetween(
+                idNatillera, tipoAporte.getId(), request.getFechaInicio(), request.getFechaFin()));
+        ahorros.addAll(movimientoRepository.findByIdNatilleraAndIdTipoMovimientoAndFechaBetween(
+                idNatillera, tipoPremioRifa.getId(), request.getFechaInicio(), request.getFechaFin()));
+
+        Map<Long, Long> ahorroPorPersona = ahorros.stream()
+                .filter(m -> m.getIdPersona() != null)
                 .collect(Collectors.groupingBy(Movimiento::getIdPersona, Collectors.summingLong(Movimiento::getMonto)));
 
         if (ahorroPorPersona.isEmpty()) {

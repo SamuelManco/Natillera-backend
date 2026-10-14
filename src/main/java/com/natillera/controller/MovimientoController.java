@@ -2,6 +2,7 @@ package com.natillera.controller;
 
 import com.natillera.model.Movimiento;
 import com.natillera.repository.MovimientoRepository;
+import com.natillera.service.AporteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,9 +17,13 @@ public class MovimientoController {
     @Autowired
     private MovimientoRepository repository;
 
-    // Create
+    @Autowired
+    private AporteService aporteService;
+
+    // Create (los aportes se validan contra la cuota mínima del socio)
     @PostMapping
     public ResponseEntity<Movimiento> crear(@RequestBody Movimiento entidad) {
+        aporteService.validarAporte(entidad);
         Movimiento guardado = repository.save(entidad);
         return new ResponseEntity<>(guardado, HttpStatus.CREATED);
     }
@@ -40,12 +45,12 @@ public class MovimientoController {
     // Update
     @PutMapping("/{id}")
     public ResponseEntity<Movimiento> actualizar(@PathVariable Long id, @RequestBody Movimiento datos) {
-        return repository.findById(id)
-                .map(existente -> {
-                    datos.setId(id);
-                    return ResponseEntity.ok(repository.save(datos));
-                })
-                .orElse(ResponseEntity.notFound().build());
+        if (!repository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        aporteService.validarAporte(datos);
+        datos.setId(id);
+        return ResponseEntity.ok(repository.save(datos));
     }
 
     // Delete
