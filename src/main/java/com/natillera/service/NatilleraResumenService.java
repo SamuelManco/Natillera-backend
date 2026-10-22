@@ -1,10 +1,12 @@
 package com.natillera.service;
 
 import com.natillera.dto.NatilleraResumenResponse;
+import com.natillera.model.Liquidacion;
 import com.natillera.model.Movimiento;
 import com.natillera.model.Natillera;
 import com.natillera.model.Persona;
 import com.natillera.model.TipoMovimiento;
+import com.natillera.repository.LiquidacionRepository;
 import com.natillera.repository.MovimientoRepository;
 import com.natillera.repository.NatilleraRepository;
 import com.natillera.repository.PersonaRepository;
@@ -42,6 +44,9 @@ public class NatilleraResumenService {
     @Autowired
     private PersonaRepository personaRepository;
 
+    @Autowired
+    private LiquidacionRepository liquidacionRepository;
+
     // Movimientos de un tipo, de esta natillera, dentro del rango opcional de fechas.
     // Si el tipo todavía no existe en el catálogo, devuelve lista vacía (el resumen igual funciona).
     private List<Movimiento> movimientos(String nombreTipo, Long idNatillera, LocalDate desde, LocalDate hasta) {
@@ -67,10 +72,24 @@ public class NatilleraResumenService {
         return total;
     }
 
-    public NatilleraResumenResponse resumen(LocalDate desde, LocalDate hasta) {
+    public NatilleraResumenResponse resumen(LocalDate desde, LocalDate hasta, boolean historialCompleto) {
         Natillera natillera = natilleraRepository.findAll().stream().findFirst()
                 .orElseThrow(() -> new IllegalStateException("No hay ninguna natillera creada"));
         Long idNatillera = natillera.getId();
+
+        // Periodo actual: si no se pide un rango de fechas ni el historial completo, los totales
+        // empiezan el día siguiente al último periodo liquidado. Así, al cerrar un periodo,
+        // todo aparece en cero para empezar de nuevo (sin borrar el historial).
+        LocalDate ultimoCierre = liquidacionRepository.findAll().stream()
+                .filter(l -> idNatillera.equals(l.getIdNatillera()) && l.getFechaFin() != null)
+                .map(Liquidacion::getFechaFin)
+                .max(LocalDate::compareTo)
+                .orElse(null);
+        boolean periodoActual = false;
+        if (desde == null && !historialCompleto && ultimoCierre != null) {
+            desde = ultimoCierre.plusDays(1);
+            periodoActual = true;
+        }
 
         List<Movimiento> aportes = movimientos(TIPO_APORTE, idNatillera, desde, hasta);
         List<Movimiento> premios = movimientos(TIPO_PREMIO_RIFA, idNatillera, desde, hasta);
@@ -133,7 +152,15 @@ public class NatilleraResumenService {
         resp.setPrestamosPorCobrar(porCobrar);
         resp.setPrestamosActivos(activos);
         resp.setPagosLiquidacion(totalPagos);
-        resp.setDisponibleEnCaja(totalCapital - porCobrar - totalPagos);
+        // La caja es un saldo de todo el tiempo: no depende del periodo que se esté viendo
+        long entradasTotales = suma(movimientos(TIPO_APORTE, idNatillera, null, null))
+                + suma(movimientos(TIPO_PREMIO_RIFA, idNatillera, null, null))
+                + suma(movimientos(TIPO_INGRESO_RIFA, idNatillera, null, null))
+                + suma(movimientos(TIPO_INTERES_PRESTAMO, idNatillera, null, null));
+        long pagosTotales = suma(movimientos(TIPO_PAGO_LIQUIDACION, idNatillera, null, null));
+        resp.setDisponibleEnCaja(entradasTotales - porCobrar - pagosTotales);
+        resp.setPeriodoActual(periodoActual);
+        resp.setUltimoCierre(ultimoCierre);
         resp.setNumeroSocios(personas.size());
         resp.setAhorroPorSocio(porSocio);
         return resp;

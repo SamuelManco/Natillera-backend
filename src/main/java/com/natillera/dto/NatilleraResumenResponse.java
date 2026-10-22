@@ -11,6 +11,8 @@ public class NatilleraResumenResponse {
     private String nombreNatillera;
     private LocalDate desde;   // filtro opcional
     private LocalDate hasta;   // filtro opcional
+    private boolean periodoActual;   // true si los totales empiezan después del último cierre
+    private LocalDate ultimoCierre;  // fecha fin del último periodo liquidado (null si no hay)
 
     // Ahorro de los socios
     private long totalAportes;
@@ -27,7 +29,7 @@ public class NatilleraResumenResponse {
     private long prestamosPorCobrar;   // saldo pendiente de los préstamos activos
     private int prestamosActivos;
     private long pagosLiquidacion;     // lo ya entregado a los socios
-    private long disponibleEnCaja;     // totalCapital - prestamosPorCobrar - pagosLiquidacion
+    private long disponibleEnCaja;     // saldo de todo el tiempo: lo recibido - préstamos por cobrar - pagos entregados
 
     private int numeroSocios;
     private List<AhorroSocio> ahorroPorSocio;

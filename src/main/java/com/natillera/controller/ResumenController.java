@@ -18,11 +18,13 @@ public class ResumenController {
     @Autowired
     private NatilleraResumenService resumenService;
 
-    // Totales de la natillera. Los parámetros desde/hasta son opcionales (formato 2026-01-31).
+    // Totales de la natillera. Por defecto muestra el periodo actual (después del último cierre).
+    // Parámetros opcionales: desde/hasta (formato 2026-01-31) o todo=true para ver el historial completo.
     @GetMapping
     public NatilleraResumenResponse resumen(
             @RequestParam(name = "desde", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
-            @RequestParam(name = "hasta", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta) {
-        return resumenService.resumen(desde, hasta);
+            @RequestParam(name = "hasta", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
+            @RequestParam(name = "todo", required = false, defaultValue = "false") boolean todo) {
+        return resumenService.resumen(desde, hasta, todo);
     }
 }
